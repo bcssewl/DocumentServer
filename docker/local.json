@@ -1,0 +1,26 @@
+{
+  "services": {
+    "CoAuthoring": {
+      "secret": {
+        "inbox": {
+          "string": "local-dev-secret-change-in-production"
+        },
+        "outbox": {
+          "string": "local-dev-secret-change-in-production"
+        },
+        "session": {
+          "string": "local-dev-secret-change-in-production"
+        }
+      },
+      "token": {
+        "enable": {
+          "request": {
+            "inbox": true,
+            "outbox": true
+          },
+          "browser": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Development workspace container
+  workspace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    networks:
+      - onlyoffice
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: onlyoffice
+      POSTGRES_USER: onlyoffice
+      POSTGRES_PASSWORD: onlyoffice
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - onlyoffice
+    ports:
+      - "5432:5432"
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - onlyoffice
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  # Redis (for caching)
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - onlyoffice
+    ports:
+      - "6379:6379"
+
+networks:
+  onlyoffice:
+    driver: bridge
+
+volumes:
+  postgres_data:

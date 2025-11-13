@@ -1,0 +1,75 @@
+{
+  "name": "OnlyOffice DocumentServer - Custom Development",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+  
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "editor.formatOnSave": false,
+        "files.watcherExclude": {
+          "**/node_modules/**": true,
+          "**/build/**": true,
+          "**/.git/**": true
+        }
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "ms-vscode.cpptools",
+        "ms-azuretools.vscode-docker",
+        "editorconfig.editorconfig",
+        "ms-vscode.makefile-tools",
+        "ms-python.python"
+      ]
+    }
+  },
+  
+  "forwardPorts": [
+    9090,
+    9443,
+    5432,
+    5672,
+    15672
+  ],
+  
+  "portsAttributes": {
+    "9090": {
+      "label": "DocumentServer HTTP",
+      "onAutoForward": "notify"
+    },
+    "9443": {
+      "label": "DocumentServer HTTPS",
+      "onAutoForward": "silent"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    },
+    "5672": {
+      "label": "RabbitMQ",
+      "onAutoForward": "silent"
+    },
+    "15672": {
+      "label": "RabbitMQ Management",
+      "onAutoForward": "silent"
+    }
+  },
+  
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  
+  "remoteUser": "vscode",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "username": "vscode",
+      "userUid": 1000,
+      "userGid": 1000
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  }
+}

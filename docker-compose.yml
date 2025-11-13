@@ -1,0 +1,75 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14
+    container_name: onlyoffice-postgres
+    environment:
+      POSTGRES_DB: onlyoffice
+      POSTGRES_USER: onlyoffice
+      POSTGRES_PASSWORD: onlyoffice
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - onlyoffice
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: onlyoffice-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - onlyoffice
+
+  # DocumentServer (built from source)
+  documentserver:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: onlyoffice-documentserver
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      - DB_TYPE=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=onlyoffice
+      - DB_USER=onlyoffice
+      - DB_PWD=onlyoffice
+      - AMQP_URI=amqp://guest:guest@rabbitmq
+      - NODE_ENV=development
+      - JWT_SECRET=local-dev-secret-change-in-production
+    volumes:
+      # Persistent data volumes (survives container restarts)
+      - optivise_documentserver_data:/var/www/onlyoffice
+      - optivise_documentserver_logs:/var/log/onlyoffice
+      - optivise_documentserver_lib:/var/lib/onlyoffice
+      
+      # Note: Source code is now baked into the Docker image during build
+      # This fixes the version reset issue by ensuring consistent file timestamps
+      # To edit code, modify source files and rebuild the image with:
+      #   docker-compose build --no-cache documentserver
+      #   docker-compose up -d
+    ports:
+      - "9090:80"
+      - "9443:443"
+    networks:
+      - onlyoffice
+
+networks:
+  onlyoffice:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  optivise_documentserver_data:
+  optivise_documentserver_logs:
+  optivise_documentserver_lib:

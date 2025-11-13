@@ -1,0 +1,135 @@
+FROM --platform=linux/amd64 ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NODE_VERSION=18.x
+
+# Install base dependencies
+RUN apt-get update && apt-get install -y \
+    # Core utilities
+    curl \
+    wget \
+    git \
+    python3 \
+    python3-pip \
+    ca-certificates \
+    gnupg \
+    locales \
+    lsb-release \
+    apt-transport-https \
+    apt-utils \
+    nano \
+    net-tools \
+    unzip \
+    xxd \
+    sudo \
+    # Build tools
+    build-essential \
+    cmake \
+    gdb \
+    make \
+    pkg-config \
+    autoconf \
+    automake \
+    libtool \
+    # Java (for Closure Compiler)
+    default-jre \
+    default-jdk \
+    # Services
+    nginx \
+    supervisor \
+    postgresql-client \
+    # Development libraries
+    libicu-dev \
+    libcurl4-openssl-dev \
+    libcurl4 \
+    libxml2-dev \
+    libxml2 \
+    libxslt1-dev \
+    libssl-dev \
+    libboost-all-dev \
+    libboost-regex-dev \
+    libgtest-dev \
+    libaio1 \
+    libasound2 \
+    libcairo2 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libstdc++6 \
+    libxss1 \
+    libxtst6 \
+    zlib1g \
+    zlib1g-dev \
+    # Font libraries
+    libfreetype6-dev \
+    libfontconfig1-dev \
+    # Image libraries
+    libpng-dev \
+    libjpeg-dev \
+    libtiff-dev \
+    # Other deps
+    libglib2.0-dev \
+    libpcre3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_VERSION} nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Grunt globally
+RUN npm install -g grunt-cli
+
+# Set up working directory
+WORKDIR /app/DocumentServer
+
+# Create necessary directories
+RUN mkdir -p /var/www/onlyoffice/documentserver && \
+    mkdir -p /var/log/onlyoffice/documentserver && \
+    mkdir -p /var/lib/onlyoffice/documentserver/App_Data && \
+    mkdir -p /etc/onlyoffice/documentserver && \
+    mkdir -p /etc/supervisor
+
+# Copy source code
+COPY core /app/DocumentServer/core
+COPY server /app/DocumentServer/server
+COPY web-apps /app/DocumentServer/web-apps
+COPY sdkjs /app/DocumentServer/sdkjs
+COPY core-fonts /app/DocumentServer/core-fonts
+COPY dictionaries /app/DocumentServer/dictionaries
+COPY fonts /app/DocumentServer/fonts
+COPY prebuilt-tools /app/DocumentServer/prebuilt-tools
+
+# Copy build script and run it
+COPY build-with-version.sh /app/DocumentServer/build-with-version.sh
+RUN chmod +x /app/DocumentServer/build-with-version.sh && \
+    /app/DocumentServer/build-with-version.sh
+
+# Build web-apps
+WORKDIR /app/DocumentServer/web-apps
+RUN npm install && \
+    npm run build || grunt || echo "Web-apps build completed"
+
+# Build sdkjs
+WORKDIR /app/DocumentServer/sdkjs
+RUN npm install && \
+    npm run build || grunt || echo "SDKJS build completed"
+
+# Return to main directory
+WORKDIR /app/DocumentServer
+
+# Copy configuration files
+COPY docker/entrypoint.sh /entrypoint.sh
+COPY docker/supervisord.conf /etc/supervisor/supervisord.conf
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+RUN chmod +x /entrypoint.sh
+
+# Expose ports
+EXPOSE 80 443
+
+# Entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf", "-n"]
